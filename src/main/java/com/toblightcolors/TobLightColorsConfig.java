@@ -10,6 +10,17 @@ import java.awt.Color;
 @ConfigGroup("toblightcolors")
 public interface TobLightColorsConfig extends Config
 {
+	@ConfigItem(
+			keyName = "enableLightAnimation",
+			name = "Enable light animation",
+			description = "Enable adding an animation to the light beam",
+			position = 0
+	)
+	default boolean enableLightAnimation()
+	{
+		return false;
+	}
+
 	@ConfigSection(
 			name = "Your chest",
 			description = "Settings when you receive a unique in your name",
@@ -99,13 +110,13 @@ public interface TobLightColorsConfig extends Config
 	}
 
 	@ConfigItem(
-			keyName = "enableLightBeamOther",
+			keyName = "enableUniqueLightBeamOther",
 			name = "Enable unique light beam",
 			description = "Enable adding the cox light beam above the chest when someone else receives a unique",
 			position = 1,
 			section = otherChest
 	)
-	default boolean enableLightBeamOther()
+	default boolean enableUniqueLightBeamOther()
 	{
 		return true;
 	}

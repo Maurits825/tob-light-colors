@@ -2,6 +2,7 @@ package com.toblightcolors;
 
 import com.google.inject.Provides;
 import javax.inject.Inject;
+
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.AnimationID;
 import net.runelite.api.Client;
@@ -11,7 +12,9 @@ import net.runelite.api.ModelData;
 import net.runelite.api.RuneLiteObject;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.GameObjectDespawned;
 import net.runelite.api.events.GameObjectSpawned;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
@@ -20,7 +23,9 @@ import net.runelite.client.util.Text;
 
 import java.awt.Color;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @PluginDescriptor(
@@ -31,6 +36,9 @@ public class TobLightColorsPlugin extends Plugin
 {
 	@Inject
 	private Client client;
+
+	@Inject
+	private ClientThread clientThread;
 
 	@Inject
 	private TobLightColorsConfig config;
@@ -53,6 +61,8 @@ public class TobLightColorsPlugin extends Plugin
 
 	private static final int LIGHT_BEAM_MODEL = 5809;
 
+	private Map<Integer, RuneLiteObject> lightBeamsObjects = new HashMap<>();
+
 	@Override
 	protected void startUp() throws Exception
 	{
@@ -61,6 +71,11 @@ public class TobLightColorsPlugin extends Plugin
 	@Override
 	protected void shutDown() throws Exception
 	{
+		clientThread.invokeLater(() ->
+		{
+			clearAllLightBeams();
+			return true;
+		});
 	}
 
 	@Subscribe
@@ -69,7 +84,7 @@ public class TobLightColorsPlugin extends Plugin
 		String message = Text.sanitize(Text.removeTags(event.getMessage()));
 		if (message.contains("s") && event.getName().contains(client.getLocalPlayer().getName())) {
 			spawnTobChest();
-			spawnLightBeam(client.getLocalPlayer().getLocalLocation(), config.uniqueColorYour());
+			spawnLightBeam(client.getLocalPlayer().getLocalLocation(), config.uniqueColorYour(), 1);
 		}
 	}
 
@@ -80,43 +95,77 @@ public class TobLightColorsPlugin extends Plugin
 		if (REWARD_CHEST_IDS.contains(objId)) {
 			int impostorId = client.getObjectDefinition(objId).getImpostor().getId();
 			Model tobChestModel = event.getGameObject().getRenderable().getModel();
+			LocalPoint tobChestPoint = event.getGameObject().getLocalLocation();
 
 			if (impostorId == YOUR_TOB_CHEST_PURPLE_OBJ) {
 				if (config.enableRecolorYour()) {
 					recolorTobChest(tobChestModel);
+				}
+				if (config.enableUniqueLightBeamYour()) {
+					spawnLightBeam(tobChestPoint, config.uniqueColorYour(), objId);
 				}
 			}
 			else if (impostorId == OTHER_TOB_CHEST_PURPLE_OBJ) {
 				if (config.enableRecolorOther()) {
 					recolorTobChest(tobChestModel);
 				}
+				if (config.enableUniqueLightBeamOther()) {
+					spawnLightBeam(tobChestPoint, config.uniqueColorOther(), objId);
+				}
 			}
 			else if (impostorId == YOUR_TOB_CHEST_NORMAL_OBJ) {
-				//onyl add loott beam if enabled
+				if (config.enableStandardLightBeamYour()) {
+					spawnLightBeam(tobChestPoint, config.standardColorYour(), objId);
+				}
 			}
 			else if (impostorId == OTHER_TOB_CHEST_NORMAL_OBJ) {
-				//onyl add loott beam if enabled
+				if (config.enableStandardLightBeamOther()) {
+					spawnLightBeam(tobChestPoint, config.standardColorOther(), objId);
+				}
 			}
 		}
 	}
 
-	private void spawnLightBeam(LocalPoint tobChestPoint, Color color)
+	@Subscribe
+	public void onGameObjectDespawned(GameObjectDespawned event)
+	{
+		int objId = event.getGameObject().getId();
+		if (lightBeamsObjects.containsKey(objId)) {
+			lightBeamsObjects.get(objId).setActive(false);
+			lightBeamsObjects.remove(objId);
+		}
+	}
+
+	private void spawnLightBeam(LocalPoint point, Color color, int objId)
 	{
 		RuneLiteObject lightBeam = client.createRuneLiteObject();
 		ModelData lightBeamModel = client.loadModelData(LIGHT_BEAM_MODEL)
 				.cloneVertices()
-				.translate(0, -180, 0)
+				.translate(0, -180, 0) //TODO will need to change -180 maybe??
 				.cloneColors();
 
 		lightBeamModel.recolor(lightBeamModel.getFaceColors()[0],
 				JagexColor.rgbToHSL(color.getRGB(), 1.0d));
 
 		lightBeam.setModel(lightBeamModel.light());
-		//TODO maybe add animation, as config?
-		//lightBeam.setAnimation(client.loadAnimation(AnimationID.RAID_LIGHT_ANIMATION));
-		//lightBeam.setShouldLoop(true);
-		lightBeam.setLocation(tobChestPoint, client.getPlane());
+
+		if (config.enableLightAnimation()) {
+			lightBeam.setAnimation(client.loadAnimation(AnimationID.RAID_LIGHT_ANIMATION));
+			lightBeam.setShouldLoop(true);
+		}
+
+		lightBeam.setLocation(point, client.getPlane());
 		lightBeam.setActive(true);
+
+		lightBeamsObjects.put(objId, lightBeam);
+	}
+
+	private void clearAllLightBeams() {
+		for (Map.Entry<Integer, RuneLiteObject> entry : lightBeamsObjects.entrySet()) {
+			entry.getValue().setActive(false);
+		}
+
+		lightBeamsObjects.clear();
 	}
 
 	//TODO remove this, just testing
@@ -139,10 +188,8 @@ public class TobLightColorsPlugin extends Plugin
 		for (int i = 0; i < faceColors1.length; i++)
 		{
 			if (faceColors1[i] > PURPLE_HSL_COLOR_LOW && faceColors1[i] < PURPLE_HSL_COLOR_HIGH) {
-				log.debug("c:" + faceColors1[i]);
 				faceColors1[i] = replacementColor;
 			}
-
 		}
 	}
 
