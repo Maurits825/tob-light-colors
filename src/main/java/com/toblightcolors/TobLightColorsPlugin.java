@@ -96,7 +96,7 @@ public class TobLightColorsPlugin extends Plugin
 			int impostorId = client.getObjectDefinition(objId).getImpostor().getId();
 			Model tobChestModel = event.getGameObject().getRenderable().getModel();
 			LocalPoint tobChestPoint = event.getGameObject().getLocalLocation();
-
+			log.debug("tob chest impid: " + impostorId + ", point: " + tobChestPoint);
 			if (impostorId == YOUR_TOB_CHEST_PURPLE_OBJ) {
 				if (config.enableRecolorYour()) {
 					recolorTobChest(tobChestModel);
@@ -131,6 +131,7 @@ public class TobLightColorsPlugin extends Plugin
 	{
 		int objId = event.getGameObject().getId();
 		if (lightBeamsObjects.containsKey(objId)) {
+			log.debug("removing light beam from obj id: " + objId);
 			lightBeamsObjects.get(objId).setActive(false);
 			lightBeamsObjects.remove(objId);
 		}
@@ -138,10 +139,12 @@ public class TobLightColorsPlugin extends Plugin
 
 	private void spawnLightBeam(LocalPoint point, Color color, int objId)
 	{
+		log.debug("spawning light beam at p: " + point);
 		RuneLiteObject lightBeam = client.createRuneLiteObject();
 		ModelData lightBeamModel = client.loadModelData(LIGHT_BEAM_MODEL)
 				.cloneVertices()
-				.translate(0, -180, 0) //TODO will need to change -180 maybe??
+				.translate(0, -100, 0)
+				.scale(240, 200, 240) //TODO TEST this??
 				.cloneColors();
 
 		lightBeamModel.recolor(lightBeamModel.getFaceColors()[0],
@@ -183,6 +186,7 @@ public class TobLightColorsPlugin extends Plugin
 
 	private void recolorTobChest(Model tobChestModel)
 	{
+		log.debug("recoloring tob chest: " + tobChestModel);
 		int replacementColor = colorToRs2hsb(config.uniqueColorYour());
 		int[] faceColors1 = tobChestModel.getFaceColors1();
 		for (int i = 0; i < faceColors1.length; i++)
