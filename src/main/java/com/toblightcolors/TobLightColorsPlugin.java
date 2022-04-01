@@ -11,7 +11,6 @@ import net.runelite.api.Model;
 import net.runelite.api.ModelData;
 import net.runelite.api.RuneLiteObject;
 import net.runelite.api.coords.LocalPoint;
-import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameObjectDespawned;
 import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.client.callback.ClientThread;
@@ -19,7 +18,6 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.util.Text;
 
 import java.awt.Color;
 import java.util.Arrays;
@@ -42,12 +40,6 @@ public class TobLightColorsPlugin extends Plugin
 
 	@Inject
 	private TobLightColorsConfig config;
-
-	//TODO can also remove these, just for testing
-	private static final int YOUR_TOB_CHEST_PURPLE_MODEL = 35448;
-	private static final int YOUR_TOB_CHEST_NORMAL_MODEL = 35446;
-	private static final int OTHER_TOB_CHEST_PURPLE_MODEL = 35425;
-	private static final int OTHER_TOB_CHEST_NORMAL_MODEL = 35439;
 
 	private static final int YOUR_TOB_CHEST_PURPLE_OBJ = 32993;
 	private static final int YOUR_TOB_CHEST_NORMAL_OBJ = 32992;
@@ -79,16 +71,6 @@ public class TobLightColorsPlugin extends Plugin
 	}
 
 	@Subscribe
-	public void onChatMessage(ChatMessage event)
-	{
-		String message = Text.sanitize(Text.removeTags(event.getMessage()));
-		if (message.contains("s") && event.getName().contains(client.getLocalPlayer().getName())) {
-			spawnTobChest();
-			spawnLightBeam(client.getLocalPlayer().getLocalLocation(), config.uniqueColorYour(), 1);
-		}
-	}
-
-	@Subscribe
 	public void onGameObjectSpawned(GameObjectSpawned event)
 	{
 		int objId = event.getGameObject().getId();
@@ -96,7 +78,7 @@ public class TobLightColorsPlugin extends Plugin
 			int impostorId = client.getObjectDefinition(objId).getImpostor().getId();
 			Model tobChestModel = event.getGameObject().getRenderable().getModel();
 			LocalPoint tobChestPoint = event.getGameObject().getLocalLocation();
-			log.debug("tob chest impid: " + impostorId + ", point: " + tobChestPoint);
+
 			if (impostorId == YOUR_TOB_CHEST_PURPLE_OBJ) {
 				if (config.enableRecolorYour()) {
 					recolorTobChest(tobChestModel);
@@ -131,7 +113,6 @@ public class TobLightColorsPlugin extends Plugin
 	{
 		int objId = event.getGameObject().getId();
 		if (lightBeamsObjects.containsKey(objId)) {
-			log.debug("removing light beam from obj id: " + objId);
 			lightBeamsObjects.get(objId).setActive(false);
 			lightBeamsObjects.remove(objId);
 		}
@@ -139,12 +120,11 @@ public class TobLightColorsPlugin extends Plugin
 
 	private void spawnLightBeam(LocalPoint point, Color color, int objId)
 	{
-		log.debug("spawning light beam at p: " + point);
 		RuneLiteObject lightBeam = client.createRuneLiteObject();
 		ModelData lightBeamModel = client.loadModelData(LIGHT_BEAM_MODEL)
 				.cloneVertices()
 				.translate(0, -100, 0)
-				.scale(240, 200, 240) //TODO TEST this??
+				.scale(240, 200, 240)
 				.cloneColors();
 
 		lightBeamModel.recolor(lightBeamModel.getFaceColors()[0],
@@ -171,22 +151,8 @@ public class TobLightColorsPlugin extends Plugin
 		lightBeamsObjects.clear();
 	}
 
-	//TODO remove this, just testing
-	private void spawnTobChest()
-	{
-		RuneLiteObject tobChest = client.createRuneLiteObject();
-		Model tobChestModel = client.loadModel(YOUR_TOB_CHEST_PURPLE_MODEL);
-
-		recolorTobChest(tobChestModel);
-
-		tobChest.setModel(tobChestModel);
-		tobChest.setLocation(client.getLocalPlayer().getLocalLocation(), client.getPlane());
-		tobChest.setActive(true);
-	}
-
 	private void recolorTobChest(Model tobChestModel)
 	{
-		log.debug("recoloring tob chest: " + tobChestModel);
 		int replacementColor = colorToRs2hsb(config.uniqueColorYour());
 		int[] faceColors1 = tobChestModel.getFaceColors1();
 		for (int i = 0; i < faceColors1.length; i++)
