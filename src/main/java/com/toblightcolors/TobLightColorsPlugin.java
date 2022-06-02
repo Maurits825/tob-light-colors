@@ -81,7 +81,7 @@ public class TobLightColorsPlugin extends Plugin
 
 			if (impostorId == YOUR_TOB_CHEST_PURPLE_OBJ) {
 				if (config.enableRecolorYour()) {
-					recolorTobChest(tobChestModel);
+					recolorTobChest(tobChestModel, config.uniqueColorYour());
 				}
 				if (config.enableUniqueLightBeamYour()) {
 					spawnLightBeam(tobChestPoint, config.uniqueColorYour(), objId);
@@ -89,7 +89,7 @@ public class TobLightColorsPlugin extends Plugin
 			}
 			else if (impostorId == OTHER_TOB_CHEST_PURPLE_OBJ) {
 				if (config.enableRecolorOther()) {
-					recolorTobChest(tobChestModel);
+					recolorTobChest(tobChestModel, config.uniqueColorOther());
 				}
 				if (config.enableUniqueLightBeamOther()) {
 					spawnLightBeam(tobChestPoint, config.uniqueColorOther(), objId);
@@ -151,9 +151,9 @@ public class TobLightColorsPlugin extends Plugin
 		lightBeamsObjects.clear();
 	}
 
-	private void recolorTobChest(Model tobChestModel)
+	private void recolorTobChest(Model tobChestModel, Color color)
 	{
-		int replacementColor = colorToRs2hsb(config.uniqueColorYour());
+		int replacementColor = colorToRs2hsb(color);
 		int[] faceColors1 = tobChestModel.getFaceColors1();
 		for (int i = 0; i < faceColors1.length; i++)
 		{
